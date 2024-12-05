@@ -4,8 +4,9 @@ Date: 2024nov28
 """
 
 # stdlib
-import pickle
 import hashlib
+import inspect
+import pickle
 import threading
 
 
@@ -31,7 +32,15 @@ class MemoizeAPI:
     class an encapsulating class.
     """
 
-    def __init__(self, func, cache_prefix="", ignore_args=None, ignore_kwargs=None):
+    def __init__(
+        self,
+        func,
+        cache_prefix="",
+        ignore_args=None,
+        ignore_kwargs=None,
+        delim="_",
+        verbose=False,
+    ):
         """Initialize the calling function and a prefix that can be used to
         modify storage keys.
         """
@@ -40,6 +49,15 @@ class MemoizeAPI:
         self.cache_prefix = cache_prefix
         self.ignore_args = ignore_args
         self.ignore_kwargs = ignore_kwargs
+        self.delim = delim
+        self.verbose = verbose
+
+        # get default kwargs
+        sig = inspect.signature(self.func)
+        self.default_kwargs = {}
+        for parm in sig.parameters.values():
+            if parm.default is not inspect.Parameter.empty:
+                self.default_kwargs[parm.name] = parm.default
 
     def __call__(self, *args, **kwargs):
         """Execute the 'run' function as though this object were are function
@@ -49,10 +67,10 @@ class MemoizeAPI:
 
     def key(self, args_in, kwargs_in):
         """Return a key based on the hash and prefix."""
-        base = f"{self.func_name}_{self.hash(args_in, kwargs_in)}"
+        base = f"{self.func_name}{self.delim}{self.hash(args_in, kwargs_in)}"
         if self.cache_prefix == "":
             return base
-        return f"{self.cache_prefix}_{base}"
+        return f"{self.cache_prefix}{self.delim}{base}"
 
     def get(self, key):
         """Return the corresponding cached item."""
@@ -76,11 +94,13 @@ class MemoizeAPI:
         okey = self.key(args_in, kwargs_in)
 
         if (out := self.get(okey)) is not None:
-            print("cache hit", okey)
+            if self.verbose:
+                print("cache hit", okey)
             return out
 
+        if self.verbose:
+            print("cache miss", okey)
         data = self.func(*args_in, **kwargs_in)
-        print("run", okey)
         return self.put(okey, data)
 
     def hash(self, args_in, kwargs_in):
@@ -93,10 +113,15 @@ class MemoizeAPI:
             else [arg for ind, arg in enumerate(args_in) if ind not in self.ignore_args]
         )
 
+        # Make sure all known kwargs are part of the hash, not just the ones
+        # passed.
+        full_kwargs = dict(self.default_kwargs)
+        full_kwargs.update(kwargs_in)
+
         act_kwargs = (
-            kwargs_in
+            full_kwargs
             if self.ignore_kwargs is None
-            else {k: v for k, v in kwargs_in.items() if k not in self.ignore_kwargs}
+            else {k: v for k, v in full_kwargs.items() if k not in self.ignore_kwargs}
         )
 
         return hashlib.sha512(pickle.dumps([act_args, act_kwargs])).hexdigest()
