@@ -4,8 +4,8 @@ Date: 2024nov28
 """
 
 # stdlib
+import pickle
 import hashlib
-import json
 import threading
 
 
@@ -26,6 +26,9 @@ class DefaultLock:
 class MemoizeAPI:
     """An abstract class that serves as a common interface for various caching
     implementations.
+
+    See https://code.activestate.com/recipes/52201/ for a recipe in making this
+    class an encapsulating class.
     """
 
     def __init__(self, func, cache_prefix=""):
@@ -35,6 +38,12 @@ class MemoizeAPI:
         self.func = func
         self.func_name = self.func.__name__
         self.cache_prefix = cache_prefix
+
+    def __call__(self, *args, **kwargs):
+        """Execute the 'run' function as though this object were are function
+        object.
+        """
+        return self.run(*args, **kwargs)
 
     def key(self, args_in, kwargs_in):
         """Return a key based on the hash and prefix."""
@@ -75,9 +84,7 @@ class MemoizeAPI:
         """Return a hash based on the input args. Default is JSON
         serialization.
         """
-        return hashlib.sha512(
-            json.dumps([args_in, kwargs_in]).encode("utf-8")
-        ).hexdigest()
+        return hashlib.sha512(pickle.dumps([args_in, kwargs_in])).hexdigest()
 
     def check(self, key):
         """Return True if the cache exists and false if it doesn't."""

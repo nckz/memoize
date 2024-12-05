@@ -34,6 +34,7 @@ class ToJSON(MemoizeAPI):
 
     def store(self, fname, data):
         fpath = os.path.join(self._cache_path, fname)
+        print("writing to", fpath)
         with open(fpath, "w") as fil:
             json.dump(data, fil)
 
