@@ -31,13 +31,15 @@ class MemoizeAPI:
     class an encapsulating class.
     """
 
-    def __init__(self, func, cache_prefix=""):
+    def __init__(self, func, cache_prefix="", ignore_args=None, ignore_kwargs=None):
         """Initialize the calling function and a prefix that can be used to
         modify storage keys.
         """
         self.func = func
         self.func_name = self.func.__name__
         self.cache_prefix = cache_prefix
+        self.ignore_args = ignore_args
+        self.ignore_kwargs = ignore_kwargs
 
     def __call__(self, *args, **kwargs):
         """Execute the 'run' function as though this object were are function
@@ -85,7 +87,19 @@ class MemoizeAPI:
         """Return a hash based on the input args. Default is JSON
         serialization.
         """
-        return hashlib.sha512(pickle.dumps([args_in, kwargs_in])).hexdigest()
+        act_args = (
+            args_in
+            if self.ignore_args is None
+            else [arg for ind, arg in enumerate(args_in) if ind not in self.ignore_args]
+        )
+
+        act_kwargs = (
+            kwargs_in
+            if self.ignore_kwargs is None
+            else {k: v for k, v in kwargs_in.items() if k not in self.ignore_kwargs}
+        )
+
+        return hashlib.sha512(pickle.dumps([act_args, act_kwargs])).hexdigest()
 
     def check(self, key):
         """Return True if the cache exists and false if it doesn't."""
