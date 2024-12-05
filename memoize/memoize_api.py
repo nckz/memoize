@@ -61,9 +61,10 @@ class MemoizeAPI:
     def put(self, key, data):
         """Run the function and store the data and return the function output."""
         if self.check(key):
+            raise KeyError(f"{key} already exists!, 'put' failed.")
+        else:
             with self.lock(key):
-                self.delete(key)
-        self.store(key, data)
+                self.store(key, data)
         return data
 
     def run(self, *args_in, **kwargs_in):
@@ -111,5 +112,7 @@ class MemoizeAPI:
     def delete(self, key):
         """Remove the data corresponding to the given key using the drivers
         specific to the desired storage method.
+
+        Only useful when making a direct call.
         """
-        pass
+        raise NotImplementedError
