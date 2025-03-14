@@ -39,6 +39,7 @@ class MemoizeAPI:
         ignore_args=None,
         ignore_kwargs=None,
         delim="_",
+        invalidate=False,
         verbose=False,
     ):
         """Initialize the calling function and a prefix that can be used to
@@ -51,6 +52,7 @@ class MemoizeAPI:
         self.ignore_kwargs = ignore_kwargs
         self.delim = delim
         self.verbose = verbose
+        self.invalidate = invalidate
 
         # get default kwargs
         sig = inspect.signature(self.func)
@@ -92,6 +94,11 @@ class MemoizeAPI:
         cache, if so, run it and then push to cache.
         """
         okey = self.key(args_in, kwargs_in)
+
+        if self.invalidate:
+            if self.verbose:
+                print("deleting", okey)
+            self.delete(okey)
 
         if (out := self.get(okey)) is not None:
             if self.verbose:
